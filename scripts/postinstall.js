@@ -1,38 +1,40 @@
-var semver = require('semver');
+const semver = require('semver');
 
-var NODE_MIN_VER_WITH_BUILTIN_SCRYPT = '10.5.0';
-var NODE_MIN_VER_INCOMPAT_SCRYPT_PKG = '12.0.0';
-// there are presently no Node.js versions with built-in scrypt that doesn't
-// have maxmem limitations
-// see: https://github.com/nodejs/node/pull/28799#issuecomment-521829488
-// anticipating improved scrypt in 10.x and 12.x release lines
-// var NODE_MIN_VER_SCRYPT_MAXMEM_FIXED = ['10.?.?', '12.?.?'];
+// Bump 10.5.0 to future 10.x.x once a 10.x release widens the maxmem range
+// See: https://github.com/nodejs/node/pull/29316
+const NODE_MIN_VERS_SCRYPT_RECOMMENDED = ['10.5.0', '12.8.0'];
+const NODE_MIN_VER_WITH_BUILTIN_SCRYPT = '10.5.0';
 
-// use NODE_MIN_VER_SCRYPT_MAXMEM_FIXED instead, when such versions are available
-// var byUpgradingOrInstalling = 'You can improve the performance of scrypt by upgrading to Node.js version ' + NODE_MIN_VER_SCRYPT_MAXMEM_FIXED.join(' or ') + ' or newer, or by installing the (deprecated) scrypt package in your project';
+// Any Node.js version < 12.0.0 is also compatible with the deprecated scrypt
+// package so can recommend that option whenever recommending a Node.js upgrade
+const canImprovePerformance = `
+  You can improve the performance of scrypt by upgrading to Node.js version
+  ${NODE_MIN_VERS_SCRYPT_RECOMMENDED.join(' or ')} or newer, or by installing
+  the (deprecated) scrypt package in your project
+`
+  .split('\n')
+  .map(line => line.trim())
+  .filter(line => line)
+  .join(' ');
 
-var byUpgradingOrInstalling = 'You can improve the performance of scrypt by upgrading to Node.js version ' + NODE_MIN_VER_WITH_BUILTIN_SCRYPT + ' or newer, or by installing the (deprecated) scrypt package in your project';
+const colorizeYellow = '\x1b[33m%s\x1b[0m';
 
-var colorizeYellow = '\x1b[33m%s\x1b[0m';
+const hasNodeBuiltin = semver
+  .Range('>=' + NODE_MIN_VER_WITH_BUILTIN_SCRYPT)
+  .test(process.version);
 
-function warn(message) {
-  console.warn(colorizeYellow, message);
-}
-
-var tryScryptPkg = function() {
-  var scryptPkg;
+function tryScryptPkg() {
+  let scryptPkgPath;
   try {
-    scryptPkg = require('scrypt');
-  } catch (e) {
-    scryptPkg = null;
+    scryptPkgPath = require.resolve('scrypt');
+  } catch (err) {
+    scryptPkgPath = null;
   }
-  return scryptPkg;
-};
-
-var hasNodeBuiltin = semver.Range('>=' + NODE_MIN_VER_WITH_BUILTIN_SCRYPT).test(process.version);
+  return scryptPkgPath;
+}
 
 if (!hasNodeBuiltin) {
   if (!tryScryptPkg()) {
-    warn(byUpgradingOrInstalling);
+    console.warn(colorizeYellow, canImprovePerformance);
   }
 }
